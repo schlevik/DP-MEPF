@@ -20,7 +20,7 @@ from torch.cuda.amp import GradScaler, autocast
 from torch.nn import CrossEntropyLoss
 from torch.optim import SGD, lr_scheduler
 from downstream_models import get_ffcv_model
-from data_loading import load_cifar10, load_synth_dataset
+from data_loading import load_cifar10, load_dataset, load_synth_dataset
 
 
 def train(model, loaders, device, lr=None, epochs=None, label_smoothing=None,
@@ -87,6 +87,24 @@ def synth_to_real_test(device, synth_data_file):
 
   return test_acc, train_acc
 
+def synth_to_real_frac_atlas(device, synth_data_file):
+  batch_size = 512
+  epochs = 10  # 24
+  lr = 0.5
+  momentum = 0.9
+  lr_peak_epoch = 5
+  weight_decay = 5e-4
+  label_smoothing = 0.1
+  lr_tta = True
+  synth_loader = load_synth_dataset(synth_data_file, batch_size, to_tensor=True)
+  test_loader, _ = load_dataset('frac_atlas', 256, 0, '../data/fracatlas', batch_size, 2, labeled=True, test_set=True)
+  loaders = {'train': synth_loader, 'test': test_loader}
+  # loaders = {'test': synth_loader, 'train': test_loader}
+  model = get_ffcv_model(device)
+  train(model, loaders, device, lr, epochs, label_smoothing, momentum, weight_decay, lr_peak_epoch)
+  test_acc, train_acc = evaluate(model, loaders, device, lr_tta)
+
+  return test_acc, train_acc
 
 def main():
   pass

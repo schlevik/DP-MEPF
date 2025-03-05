@@ -133,4 +133,7 @@ def stats_from_dataloader(dataloader, model, device='cpu'):
 if __name__ == '__main__':
   # store_data_stats('cifar10')
   # store_data_stats('cifar10', 32, 32, '../data', True)
-  store_imagenet32_stats()
+  # store_imagenet32_stats()
+  # store_data_stats('frac_atlas', 64, 64, dataroot='../data/frac_atlas/')
+  store_data_stats('sipakmed', 64, 64, dataroot='../data/sipakmed/')
+  

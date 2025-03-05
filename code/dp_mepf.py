@@ -1,5 +1,6 @@
 import os
 import torch as pt
+from tqdm import trange
 from dp_mepf_args import get_args, get_imagenet_norm_min_and_range, get_param_group_tuples
 from util_logging import configure_logger, log_losses_and_imgs, route_io_to_file, delayed_log, \
   LOG, log_fake_feature_norms, log_synth_data_eval, log_iteration, log_args, BestResult, \
@@ -42,7 +43,6 @@ def get_real_data_embedding(ckpt, encoders, n_matching_layers, device, train_loa
       dp_res = dp_dataset_feature_release(feat_emb, feat_l2_norms, dp_params, matched_moments,
                                           n_samples, writer)
       feat_emb.real_means, feat_emb.real_vars = dp_res
-
   else:
     feat_emb.real_means = ckpt['feat_means']
     feat_emb.real_vars = ckpt['feat_vars']
@@ -295,7 +295,8 @@ def main():
   #######################################################
   # GFMN Training Loop.
   #######################################################
-  for step in range(arg.first_batch_id + 1, event_steps.final + 1):
+  for step in trange(arg.first_batch_id + 1, event_steps.final + 1, desc='Steps'):
+    #LOG.info(f"Step: {step}")
     if writer is None or step % event_steps.tb_log != 0:
       tb_log_step = False
     else:
@@ -305,17 +306,18 @@ def main():
 
     gen_noise, gen_labels = noise_maker.generator_noise()
     fake_data = gen(gen_noise)
-
     # extract features from FAKE data
+    #LOG.info(f"Before fake data embedding: {step}")
     feat_emb = get_fake_data_embedding(fake_data, encoders, feat_emb, dp_params, gen_labels,
                                        n_classes, n_matching_layers, arg.match_with_top_layers,
                                        channel_ids_by_enc, do_second_moment, tb_log_step, step,
                                        writer)
-
+    # LOG.info(f"After fake data embedding: {step}")
     adam_moving_average_update(feat_emb, acc_losses, m_avg, optimizers, arg.matched_moments)
-
+    # LOG.info(f"Finish calc adam_moving_average_update")
     gen.eval()
     if step % event_steps.eval == 0:  # note this is all train loss, not validation!
+      LOG.info("time to eval!")
       log_iteration(arg.exp_name, step)
 
       n_val_samples = arg.fid_dataset_size

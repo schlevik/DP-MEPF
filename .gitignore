@@ -1,0 +1,7 @@
+*pyc
+*.png
+code/queue.txt
+code/processed.txt
+logs
+code/logs/
+data/

@@ -9,7 +9,8 @@ import pandas as pd
 from torchvision import utils as vutils
 from torchvision import datasets
 from filelock import FileLock
-from eval_accuracy import synth_to_real_test
+from tqdm import tqdm
+from eval_accuracy import synth_to_real_frac_atlas, synth_to_real_test
 from eval_fid import get_fid_scores_fixed
 from eval_prdc import get_prdc
 from mnist_synth_data_benchmark import prep_models, model_test_run
@@ -207,7 +208,7 @@ def log_synth_data_eval(net_gen, writer, step, noise_maker, device, dataset, syn
 
   score_ser = pd.Series({}, name=step)
 
-  if dataset in {'cifar10', 'celeba', 'lsun'}:  # skip for mnist
+  if dataset in {'cifar10', 'celeba', 'lsun', 'frac_atlas'}:  # skip for mnist
     LOG.info(f'FID eval')
 
     fid_score = get_fid_scores_fixed(syn_data_file, dataset, device, fid_dataset_size,
@@ -258,8 +259,20 @@ def log_synth_data_eval(net_gen, writer, step, noise_maker, device, dataset, syn
       mean_acc, accs = mnist_synth_to_real_test(dataset, syn_data_file, writer, log_dir,
                                                 acc_file_name, step)
       return_score = mean_acc
-    else:
-      raise ValueError
+    # elif dataset=='frac_atlas':
+    #   # test_acc, train_acc = synth_to_real_frac_atlas(device, syn_data_file)
+    #   # np.savez(os.path.join(log_dir, acc_file_name),
+    #   #          test_acc=test_acc, train_acc=train_acc)
+
+    #   # score_ser['train_acc'] = train_acc
+    #   # score_ser['test_acc'] = test_acc
+
+    #   # if writer is not None:
+    #   #   writer.add_scalar('eval/test_acc', test_acc, global_step=step)
+    #   #   writer.add_scalar('eval/train_acc', train_acc, global_step=step)
+    #   # LOG.info(f'train accuracy: {train_acc}, test accuracy: {test_acc}')
+    #   # raise ValueError
+    #   return_score = fid_score
 
   score_csv_path = os.path.join(log_dir, 'eval_scores.csv')
   if os.path.exists(score_csv_path):
@@ -310,7 +323,7 @@ def create_synth_dataset(n_samples, net_gen, batch_size, noise_maker, device, da
     labels_list = [None] * len(batches)
   samples_list = []
   with pt.no_grad():
-    for labels in labels_list:
+    for labels in tqdm(labels_list, desc="Generating synthetic train dataset..."):
       z_in = noise_maker.noise_fun(labels=labels)
       if isinstance(net_gen, pt.nn.parallel.DistributedDataParallel):
         syn_batch = net_gen.module(z_in)  # don't sync, since this only runs on one gpu

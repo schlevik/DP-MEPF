@@ -1,5 +1,7 @@
 import os.path
 
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 import torch as pt
 
 import torchvision.transforms as transforms
@@ -22,7 +24,6 @@ def shift_data_transform(x):
 
 def load_dataset(dataset_name, image_size, center_crop_size, dataroot, batch_size,
                  n_workers, labeled=False, test_set=False):
-
   if dataset_name in ['celeba']:
     n_classes = None
     transformations = []
@@ -56,6 +57,41 @@ def load_dataset(dataset_name, image_size, center_crop_size, dataroot, batch_siz
   elif dataset_name == 'cifar10':
     return load_cifar10(image_size, dataroot, batch_size, n_workers, labeled, test_set)
 
+  elif dataset_name == 'frac_atlas':
+    n_classes = 2
+    transformations = []
+    if center_crop_size > image_size:
+      transformations.extend([transforms.CenterCrop(center_crop_size),
+                              transforms.Resize(image_size)])
+    else:
+      transformations.extend([transforms.Resize(image_size),
+                              transforms.CenterCrop(center_crop_size)])
+
+    transformations.extend([transforms.ToTensor()])
+
+    # folder dataset
+    if test_set:
+      root = os.path.join(dataroot, 'test')
+    else:
+      root = os.path.join(dataroot, 'train')
+    dataset = dset.ImageFolder(root=root, transform=transforms.Compose(transformations))
+
+  elif dataset_name == 'sipakmed':
+    n_classes = 5
+    transformations = []
+    if center_crop_size > image_size:
+      transformations.extend([transforms.CenterCrop(center_crop_size),
+                              transforms.Resize(image_size)])
+    else:
+      transformations.extend([transforms.Resize(image_size),
+                              transforms.CenterCrop(center_crop_size)])
+
+    transformations.extend([transforms.ToTensor()])
+    if test_set:
+      root = os.path.join(dataroot, 'test')
+    else:
+      root = os.path.join(dataroot, 'train')
+    dataset = dset.ImageFolder(root=root, transform=transforms.Compose(transformations))
   elif dataset_name == 'stl10':
     n_classes = None
     transformations = [transforms.Resize(image_size), transforms.ToTensor()]
@@ -72,7 +108,7 @@ def load_dataset(dataset_name, image_size, center_crop_size, dataroot, batch_siz
     raise ValueError(f'{dataset_name} not recognized')
 
   assert dataset
-  assert not test_set or dataset == 'cifar10'
+  assert not test_set or dataset_name in ('cifar10', 'frac_atlas')
   if labeled:
     assert n_classes is not None, 'selected dataset has no labels'
   else:
